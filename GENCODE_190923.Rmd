@@ -21,19 +21,25 @@ View(d)
 
 ```{r}
 d1 <- filter(d,X3=='gene')
-d2 <- d1 %>% group_by(X1) %>% summarize(number=sum(X3=='gene'))
+d2 <- d1 %>% group_by(X1) %>% summarize(n=n())
+colnames(d2)<-c('Chromosome','Number')
 d2
 ```
 
 ### 2. Compare the number of genes between autosomal and sex chromosome (Mean, Median)
 
 ```{r}
-d2 %>% mutate(type=ifelse(is.na(as.numeric(gsub('chr','',d2$X1))),'sex','autosomal')) %>% group_by(type) %>% summarize(Mean=mean(number),Median=median(number))
+d3 <- d2 %>% mutate(Type=case_when(
+  Chromosome %in% 'chrM' ~ "Mitochondrial",
+  Chromosome %in% c('chrX','chrY') ~ "Sex",
+  TRUE ~ "Autosomal"))
+d3 %>% group_by(Type) %>% summarize(Mean=mean(Number), Median=median(Number))
 ```
 
 ### 3. Divide the genes into groups 'protein coding' and 'long noncoding', compare the number of genes in each chromosomes within groups.
 
 ```{r}
-d3<-strsplit(d1$X9,split="; gene_")
-d1 %>% mutate(group=do.call(rbind,strsplit(d1$X9,split="; gene_"))[,2]) %>% filter(group=='type "protein_coding"' | group=='type "lncRNA"') %>% group_by(X1,group) %>% summarize(number_2=sum(X3=='gene'))
+d4 <- d1 %>% mutate(group=do.call(rbind,strsplit(d1$X9,split="; gene_"))[,2]) %>% filter(group=='type "protein_coding"' | group=='type "lncRNA"') %>% group_by(X1,group) %>% summarize(number_2=n())
+colnames(d4)<-c('Chromosome','Group','Number_2')
+d4
 ```
