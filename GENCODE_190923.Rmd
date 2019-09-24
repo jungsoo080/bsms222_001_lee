@@ -10,23 +10,24 @@ library(readr, quietly = T)
 d = read_delim('gencode.v31.basic.annotation.gtf.gz', 
                delim='\t', skip = 5, progress = F, 
                col_names = F)
+colnames(d) = c('chrom', 'source', 'feature_type', 'start', 'end', 'score', 'strand', 'phase', 'info')
 ```
 ```{r}
 View(d)
 ```
 
-# Quiz for 19/09/23
+# 3.6. Autosomal vs. Sex chromosomes.
 
-### 1. Number of genes per chromosome
+### 1. Please calculate the number of genes per chromosome.
 
 ```{r}
-d1 <- filter(d,X3=='gene')
-d2 <- d1 %>% group_by(X1) %>% summarize(n=n())
+d1 <- filter(d,feature_type=='gene')
+d2 <- d1 %>% group_by(chrom) %>% summarize(n=n())
 colnames(d2)<-c('Chromosome','Number')
 d2
 ```
 
-### 2. Compare the number of genes between autosomal and sex chromosome (Mean, Median)
+### 2. Please compare the number of genes between autosomal and sex chromosome (Mean, Median).
 
 ```{r}
 d3 <- d2 %>% mutate(Type=case_when(
@@ -36,10 +37,10 @@ d3 <- d2 %>% mutate(Type=case_when(
 d3 %>% group_by(Type) %>% summarize(Mean=mean(Number), Median=median(Number))
 ```
 
-### 3. Divide the genes into groups 'protein coding' and 'long noncoding', compare the number of genes in each chromosomes within groups.
+### 3. Please divide the genes into groups ‘protein coding’ and ‘long noncoding’, and then compare the number of genes in each chromosomes within groups.
 
 ```{r}
-d4 <- d1 %>% mutate(group=do.call(rbind,strsplit(d1$X9,split="; gene_"))[,2]) %>% filter(group=='type "protein_coding"' | group=='type "lncRNA"') %>% group_by(X1,group) %>% summarize(number_2=n())
+d4 <- d1 %>% mutate(group=do.call(rbind,strsplit(d1$info,split="; gene_"))[,2]) %>% filter(group=='type "protein_coding"' | group=='type "lncRNA"') %>% group_by(chrom,group) %>% summarize(number_2=n())
 colnames(d4)<-c('Chromosome','Group','Number_2')
 d4
 ```
