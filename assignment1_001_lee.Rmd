@@ -1,0 +1,118 @@
+---
+output: html_notebook
+---
+
+# BrainSpan dataset
+
+The development of the prefrontal cortex (PFC) is an immensely complex process. It begins as a simple neural tube that derives from the embryonic ectoderm and gradually develops into mature organization through immensely complicated and strictly regulated molecular and cellular processes. Recent advances in genome sequencing enables profiling gene expression across human tissues and developmental stages. Here I use the RNA-seq transcriptomic dataset from the BrainSpan atlas, a foundational resource for studying transcriptional mechanisms involved in human brain development. With the subset of the human dorsolateral prefrontal cortex, I will explore how gene expression changes from early fetal to late adulthood.
+
+```{r}
+load('data_brainspan_DFC.20190928.Rdata')
+```
+
+In the dataset, there are three data frames.
+
+```{r}
+View(e) # e: RNA-seq expression
+View(g) # g: gene information
+View(s) # s: sample information
+```
+
+So my research topic on this dataset is as follows:
+
+# Analysis of expression pattern of Aquaporin gene by age
+
+### Codes for data munging
+
+First, I want to classify sample age into developmental stage.
+Standards followed the content on the site below:
+
+https://www.biorxiv.org/highwire/markup/534328/expansion?width=1000&height=500&iframe=true&postprocessors=highwire_tables%2Chighwire_reclass%2Chighwire_figures%2Chighwire_math%2Chighwire_inline_linked_media%2Chighwire_embed
+
+```{r}
+library(tidyverse) # tidyverse functions are needed, especially %>%
+
+# Add new developmental_stage column
+s1 <- s %>% mutate(developmental_stage = case_when(
+  age %in% paste(8:12, 'pcw') ~ "Early prenatal",
+  age %in% paste(13:18, 'pcw') ~ "Early mid-prenatal",
+  age %in% paste(19:24, 'pcw') ~ "Late mid-prenatal",
+  age %in% paste(25:38, 'pcw') ~ "Late prenatal",
+  age %in% paste(0:5, 'mos') ~ "Early infancy",
+  age %in% c(paste(6:18, 'mos'), '1 yrs') ~ "Late infancy",
+  age %in% paste(2:5, 'yrs') ~ "Early childhood",
+  age %in% paste(6:11, 'yrs') ~ "Late childhood",
+  age %in% paste(12:19, 'yrs') ~ "Adolescence",
+  age %in% paste(20:40, 'yrs') ~ "Adulthood",
+  TRUE ~ "NA"))
+```
+
+Next, narrow down gene information dataset to focus on AQP genes.
+
+```{r}
+# Find genes that contain the letter 'AQP' and filter out pseudogenes
+g1 <- g[grep("AQP", g$gene_symbol), ] %>% filter(gene_type == 'protein_coding')
+# Order by name of AQP genes
+g0 <- g1[gsub('[A-Z]', '', g1$gene_symbol) %>% as.numeric() %>% order(), ]
+```
+
+Do the same in e dataset then reverse rows and columns.
+
+```{r}
+e1 <- e[g2$row_num ,]
+colnames(e1) <- c(1:35)
+e0 <- t(e1) %>% as.data.frame
+# Name the columns as AQP genes
+colnames(e0) <- g0$gene_symbol
+```
+
+The reason for transposing e1 dataset is to combine it with dataset that has developmental stage information.
+
+```{r}
+s0 <- bind_cols(s1, e0)
+View(s0)
+```
+
+The last dataset s0 is made. Before displaying my plots, I want to identify a specific gene (or genes) that could show meaningful RNA expression level.
+
+```{r}
+s2 <- s0 %>% gather(AQP, value, AQP1:AQP12B)
+
+ggplot(s2, aes(x = value, y = developmental_stage, fill = ..y..)) +
+  # Visualize changes in distribution over time
+  geom_density_ridges_gradient(scale = 0.7, rel_min_height = 0.01) +
+  scale_fill_viridis(name = "Color of age", option = "C") +
+  labs(title = 'Test for identifying meaningful AQP gene') + facet_wrap(~ AQP)
+```
+
+So as shown above, my gene of interest has been chosen. It's AQP4 gene.
+
+### Displaying plots
+
+```{r}
+ggplot(s0, aes(x = AQP4, y = developmental_stage, fill = ..y..)) +
+  geom_density_ridges_gradient(scale = 0.7, rel_min_height = 0.01) +
+  scale_fill_viridis(name = "Color of age", option = "plasma") +
+  labs(title = 'RNA expression level of AQP4 by developmental stage') +
+  xlab('Normalized counts') + ylab('Developmental stage') +
+  theme_light() + xlim(0, 300)
+```
+```{r}
+s2 <- s0 %>% filter(!developmental_stage %in% c('Late prenatal', 'Late infancy', 'Early infancy')) %>% group_by(developmental_stage) %>% count() %>% arrange(-row_number())
+percent_by_developmental_stage <- s2$n
+names(percent_by_developmental_stage) <- s2$developmental_stage
+
+# Represent percentage of meaningful developmental stages using waffle chart
+library(waffle)
+waffle(percent_by_developmental_stage, color = rev(plasma(7)), rows = 6, use_glyph = "child", glyph_size = 15, reverse = TRUE , title = "Percentage of meaningful developmental stages for AQP4 RNA expression") + coord_flip() + theme(plot.title = element_text(size = 12.8))
+```
+
+### Conclusion
+
+A control mechanism in language processing is located in the left dorsolateral prefrontal cortex (DLPFC).
+
+https://www.ncbi.nlm.nih.gov/pubmed/29565042
+
+The site above finds positive correlation between language learning and AQP4 gene.
+
+As we get older, our language development changes so I guess my plots support the studies suggested.
