@@ -1,0 +1,44 @@
+---
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+Name: Lee Jungsoo
+
+Student number: 2014250001
+
+Dataset 1
+
+```{r}
+knitr::include_graphics("pasted image 0.png")
+```
+
+* I think this plot shows the relationship between PolyPhen, SIFT and Presence of disease. I could catch the information of deleterious>tolerated in probably_damaging and deleterious<tolerated in benign.
+* It would be better if the plot facet by presence of disease so the type of Polyphen for each bars matches. Also using theme_minimal function would help the plot's clearity.
+* But to express proportion of SIFT, it was good to use stacked bar chart instead of Pie or Waffle chart because it is good to compare multiple proportions classified by types of PolyPhen.
+
+
+
+Dataset 2
+
+```{r}
+knitr::include_graphics("pasted image 0 (1).png")
+```
+
+* I think this plot shows what type of allelic requirement represents the distribution of pLI score for each mutation consequence.
+* It would be better if the plot adjusted scale parameter to solve density's overlapping problems. Of course, using theme_mininal function would look better. Also the very first plot does not have it's allelic requirement name and is not needed.
+* But there were many good points. Limiting x values using xlim() and the color match between labeling and the density's fill. Also using geom_density_ridge was good to show multiple distributions at once.
+
+
+
+
+Dataset 3
+
+```{r}
+knitr::include_graphics("pasted image 0 (2).png")
+```
+
+* I think this plot shows the gene expression ratio (CD117/CD44)'s change during pcw. 
+* It would be better if the plot used theme_mininal function to get rid of the grey background.
+* But it was good to not use the density plot because the samples which were in pcw were few.
