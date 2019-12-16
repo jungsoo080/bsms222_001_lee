@@ -1,0 +1,80 @@
+---
+title: "Untitled"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r cars}
+# Q1.   From   the   dataset   `heights`   in   the   `dslabs`   package,   please   describe   the distribution   of   male   and   female   heights.   If   you   pick   a   female   at   random,   what   is the   probability   that   she   is   61   inches   or   shorter?
+
+library(tidyverse)
+library(dslabs)
+data(heights)
+h <- heights %>% filter(sex == "Female")
+
+plot(h)
+
+mean((h %>% pull(height)) <= 61)
+# 0.1218487
+
+# 박스플롯을 해석해보면 25th percentile과 minimum observation 중간에 61의 값이 위치한 것으로 보아 여성의 키가 61인치보다 같거나 작을 확률이 12% 정도이다라는 해석과 일맥상통한다.
+```
+```{r}
+# Q2.   For   American   Roulette,   there   are   19   reds,   16   blacks   and   3   greens.   The   payout for   winning   on   green   is   15   dollars.   You   create   a   random   variable   that   is   the   sum   of your   winnings   after   betting   on   green   1000   times.   Start   your   code   by   setting   the seed   to   1.   Describe   your   random   variable   (e.g.   the   expected   value,   the   standard error).   Then,   create   a   Monte   Carlo   simulation   that   generates   1,000   outcomes   of   a random   variable,   and   then   describe   your   result.
+
+set.seed(1)
+
+p <- 3/(19+16+3)
+
+S <- replicate(1000, {
+ X <- sample(c(15, -1), 1000, replace = TRUE, prob = c(p, 1-p))
+ sum(X)
+})
+
+1000*(15*p + (-1)*(1-p))
+sqrt(1000)*abs(15-(-1))*sqrt(p*(1-p))
+# 263.1579
+# 136.4366
+
+hist(S)
+
+263.1579-1.96*136.4366
+263.1579+1.96*136.4366
+# -4.257836
+# 530.5736
+
+# S의 그래프에서 repeat size를 늘려 정규분포의 형태에 가까워질 때 그래프의 면적이 95%를 차지하는 구간은 [-4.257836, 530.5736]이다.
+```
+```{r}
+# Q3.   From   the   poll   example,   we   will   create   a   Monte   Carlo   simulation   for   p   =   0.45. You   will   compare   the   sampling   size   (N)   for   10,   1000,   and   the   repeat   size   (B)   for 100,   10000.   So   you   should   have   four   combinations   (10   N   x   100   B,   1000   N   x   100   B, 10   N   x   10000   B,   1000   N   x   10000   B).   Please   describe   your   Monte   Carlo   simulation results,   and   compare   four   combinations.
+
+library(cowplot)
+
+x_hat <- function(N,B) {replicate(B, {
+  x <- sample(c(0,1), size = N, replace = TRUE, prob = c(0.55, 0.45))
+  mean(x)
+})
+}
+
+p1a<-as.data.frame(x_hat(10,100)) %>%
+ggplot(aes(x_hat(10,100))) + geom_histogram(color = "black", fill = "gray") + theme_minimal()
+
+p1b<-as.data.frame(x_hat(10,10000)) %>%
+ggplot(aes(x_hat(10,10000))) + geom_histogram(color = "black", fill = "gray") + theme_minimal()
+
+p2a<-as.data.frame(x_hat(1000,100)) %>%
+ggplot(aes(x_hat(1000,100))) + geom_histogram(color = "black", fill = "gray") + theme_minimal()
+
+p2b<-as.data.frame(x_hat(1000,10000)) %>%
+ggplot(aes(x_hat(1000,10000))) + geom_histogram(color = "black", fill = "gray") + theme_minimal()
+
+plot_grid(p1a, p1b, p2a, p2b)
+
+# Sampling size(N)가 증가함에 따라 그래프는 더 조밀해진다. Repeat size(B)가 증가함에 따라 그래프는 대칭성을 띄며 정규분포의 형태에 가까워진다.
+```
