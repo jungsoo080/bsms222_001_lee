@@ -1,0 +1,194 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+vignette("DESeq2")
+```
+
+# Read counts associated with genes
+```{r}
+# Read in raw counts
+ev_rawcounts <- read.table("all_precursor_counts_sorted_deduped.tsv", header = TRUE, row.names = 1)
+ev_rawcounts <- as.data.frame(ev_rawcounts)
+View(ev_rawcounts)
+```
+```{r}
+# Generate metadata
+ev_metadata <- data.frame(condition = c(rep(c("0d","7d","20d"), 3), rep("7dwR", 3), rep("20dwR", 3)), treatment = c(rep("normal", 9), rep("treated", 6)))
+row.names(ev_metadata) <- colnames(ev_rawcounts)
+
+View(ev_metadata)
+```
+```{r}
+# Create DESeq object
+dds_ev <- DESeqDataSetFromMatrix(countData = ev_rawcounts,
+                              colData = ev_metadata,
+                              design = ~ condition)
+```
+
+# Quality control
+
+### Normalization
+```{r}
+# Determine the size factors to use for normalization
+dds_ev <- estimateSizeFactors(dds_ev)
+```
+```{r}
+# The raw counts for each sample are divided by the associated sample-specific size factor for normalization.
+sizeFactors(dds_ev)
+```
+```{r}
+# Extract the normalized counts
+normalized_ev_counts <- counts(dds_ev, normalized=TRUE)
+
+View(normalized_ev_counts)
+```
+
+### Unsupervised clustering analyses
+```{r}
+# Transform the normalized counts
+vsd_ev <- varianceStabilizingTransformation(dds_ev, blind=TRUE)
+```
+```{r}
+# Extract the matrix of transformed counts
+vsd_mat_ev <- assay(vsd_ev) 
+```
+```{r}
+# Compute the correlation values between samples
+vsd_cor_ev <- cor(vsd_mat_ev) 
+
+View(vsd_cor_ev)
+```
+```{r}
+# Load pheatmap libraries
+library(pheatmap) 
+```
+```{r}
+# Plot the heatmap
+pheatmap(vsd_cor_ev, annotation = dplyr::select(ev_metadata, condition))
+pheatmap(vsd_cor_ev, annotation = dplyr::select(ev_metadata, treatment))
+```
+```{r}
+# Plot PCA 
+plotPCA(vsd_ev, intgroup="condition")
+```
+
+# DE analysis
+
+### Differential expression analysis
+```{r}
+# Run the DESeq analysis
+dds_ev <- DESeq(dds_ev)
+```
+```{r}
+# Syntax for apply()
+
+# apply(data, rows/columns, function_to_apply)
+```
+```{r}
+# Calculating mean for each gene (each row)
+mean_counts <- apply(ev_rawcounts[, 1:15], 1, mean)
+```
+```{r}
+# Calculating variance for each gene (each row)
+variance_counts <- apply(ev_rawcounts[, 1:15], 1, var)
+```
+```{r}
+# Creating data frame with mean and variance for every gene
+df <- data.frame(mean_counts, variance_counts)
+```
+```{r}
+ggplot(df) +
+        geom_point(aes(x=mean_counts, y=variance_counts)) + 
+        scale_y_log10() +
+        scale_x_log10() +
+        xlab("Mean counts per gene") +
+        ylab("Variance per gene")
+```
+
+```{r}
+# Plot dispersion estimates
+plotDispEsts(dds_ev)
+```
+```{r}
+dds2_ev <- DESeqDataSetFromMatrix(countData = ev_rawcounts,
+                              colData = ev_metadata,
+                              design = ~ treatment)
+dds2_ev <- DESeq(dds2_ev)
+
+# Explore the results() function
+?results
+
+# Extract the results of the differential expression analysis
+ev_res <- results(dds2_ev, contrast = c("treatment", "treated", "normal"), alpha = 0.05)
+
+# lfcThreshold = 0.32
+```
+```{r}
+# Create MA plot
+DESeq2::plotMA(ev_res, ylim=c(-4,4))
+```
+
+### Shrinking log2 fold changes
+```{r}
+# Shrink the log2 fold change estimates to be more accurate
+ev_res <- lfcShrink(dds2_ev, contrast=c("treatment", "treated", "normal"), res = ev_res)
+```
+```{r}
+# Create MA plot
+DESeq2::plotMA(ev_res, ylim=c(-4,4))
+```
+
+### Results exploration
+```{r}
+mcols(ev_res)
+```
+```{r}
+head(ev_res, n=10)
+```
+```{r}
+# Get an overview of the results 
+summary(ev_res)
+```
+```{r}
+library(tidyverse)
+
+# Generate logical column 
+ev_res_all <- data.frame(ev_res) %>% mutate(threshold = padj < 0.05)
+
+View(ev_res_all)
+```
+```{r}
+# Subset the results to only return the significant genes with p-adjusted values less than 0.05
+ev_res_sig <- subset(ev_res_all, padj < 0.05)
+ 
+ev_res_sig  <- ev_res_sig %>% arrange(padj)
+
+# hsa-miR-1260b
+View(ev_res_sig)
+```
+
+```{r}
+# Create the volcano plot
+ggplot(ev_res_all) +
+        geom_point(aes(x = log2FoldChange, y = -log10(padj), color = threshold)) +
+        xlab("log2 fold change") + 
+        ylab("-log10 adjusted p-value") +
+        theme(legend.position = "none",
+              plot.title = element_text(size = rel(1.5), hjust = 0.5),
+              axis.title = element_text(size = rel(1.25)))
+```
+```{r}
+library("NOISeq")
+
+mydata <- readData(data = ev_rawcounts, factors = ev_metadata)
+
+mysaturation = dat(mydata, k = 0, ndepth = 7, type = "saturation")
+explo.plot(mysaturation, toplot = 1, samples = 1:15, yleftlim = NULL, yrightlim = NULL)
+
+mycountsbio = dat(mydata, factor = NULL, type = "countsbio")
+explo.plot(mycountsbio, toplot = 1, samples = 1:15, plottype = "boxplot")
+```
+
